@@ -14,8 +14,13 @@ use Filament\Tables\Table;
 class WebsiteResource extends Resource
 {
     protected static ?string $model = Website::class;
+    protected static ?string $navigationIcon = 'heroicon-s-globe-alt';
+    protected static ?int $navigationSort = 3;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::count();
+    }
 
     public static function form(Form $form): Form
     {
@@ -24,7 +29,7 @@ class WebsiteResource extends Resource
                 Forms\Components\TextInput::make('title')->required()->disabled(),
                 Forms\Components\Select::make('project_id')->relationship('project', 'name')->disabled(),
                 Forms\Components\TextInput::make('baseDomain')->required()->disabled(),
-                Forms\Components\Textarea::make('description')->required()->disabled(),
+                Forms\Components\Textarea::make('description')->required()->disabled()->rows(10),
                 Forms\Components\Textarea::make('keywords')->required()->disabled(),
                 Forms\Components\Textarea::make('robots')->required()->disabled(),
                 Forms\Components\Textarea::make('canonical')->required()->disabled(),
@@ -38,16 +43,39 @@ class WebsiteResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('title')->searchable(isIndividual: true),
-                Tables\Columns\TextColumn::make('project.name')->sortable()->searchable(isIndividual: true),
-                Tables\Columns\TextColumn::make('baseDomain')->searchable(isIndividual: true)->sortable(),
-                Tables\Columns\TextColumn::make('description')->searchable(isIndividual: true)->toggleable(),
-                Tables\Columns\TextColumn::make('keywords')->toggleable(),
-                Tables\Columns\TextColumn::make('robots')->toggleable(),
-                Tables\Columns\TextColumn::make('canonical')->toggleable(),
-                Tables\Columns\TextColumn::make('general')->searchable(isIndividual: true)->toggleable(),
+                Tables\Columns\TextColumn::make('title')
+                    ->searchable(isIndividual: true)
+                    ->size(Tables\Columns\TextColumn\TextColumnSize::ExtraSmall)
+                    ->copyable()
+                    ->copyMessage('Copied to clipboard')
+                    ->copyMessageDuration(1500),
+                Tables\Columns\TextColumn::make('project.name')->sortable()
+                    ->searchable(isIndividual: true)
+                    ->size(Tables\Columns\TextColumn\TextColumnSize::ExtraSmall),
+                Tables\Columns\TextColumn::make('baseDomain')
+                    ->searchable(isIndividual: true)->sortable()
+                    ->size(Tables\Columns\TextColumn\TextColumnSize::ExtraSmall),
+                Tables\Columns\TextColumn::make('description')
+                    ->searchable(isIndividual: true)
+                    ->toggleable()
+                    ->size(Tables\Columns\TextColumn\TextColumnSize::ExtraSmall)
+                    ->copyable()
+                    ->copyMessage('Copied to clipboard')
+                    ->copyMessageDuration(1500),
+                Tables\Columns\TextColumn::make('keywords')
+                    ->toggleable()
+                    ->size(Tables\Columns\TextColumn\TextColumnSize::ExtraSmall),
+                Tables\Columns\TextColumn::make('robots')
+                    ->toggleable()
+                    ->size(Tables\Columns\TextColumn\TextColumnSize::ExtraSmall),
+                Tables\Columns\TextColumn::make('canonical')
+                    ->toggleable()
+                    ->size(Tables\Columns\TextColumn\TextColumnSize::ExtraSmall),
+                Tables\Columns\TextColumn::make('general')->searchable(isIndividual: true)
+                    ->toggleable()
+                    ->size(Tables\Columns\TextColumn\TextColumnSize::ExtraSmall),
                 Tables\Columns\IconColumn::make('googleTag')->boolean()->toggleable(),
-                Tables\Columns\IconColumn::make('facebookPixel')->boolean()->toggleable(),
+                Tables\Columns\IconColumn::make('facebookPixel')->boolean()->toggleable()
 //                Tables\Columns\TextColumn::make('siteLinks'),
 //                Tables\Columns\TextColumn::make('siteMap'),
             ])

@@ -14,8 +14,13 @@ use Filament\Tables\Table;
 class WebPageResource extends Resource
 {
     protected static ?string $model = WebPage::class;
+    protected static ?string $navigationIcon = 'heroicon-o-window';
+    protected static ?int $navigationSort = 4;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::count();
+    }
 
     public static function form(Form $form): Form
     {
@@ -33,11 +38,26 @@ class WebPageResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('title')->searchable(isIndividual: true),
-                Tables\Columns\TextColumn::make('website.project.name')->sortable()->searchable(isIndividual: true),
+                Tables\Columns\TextColumn::make('title')
+                    ->searchable(isIndividual: true)
+                    ->size(Tables\Columns\TextColumn\TextColumnSize::ExtraSmall)
+                    ->copyable()
+                    ->copyMessage('Copied to clipboard')
+                    ->copyMessageDuration(1500),
+                Tables\Columns\TextColumn::make('website.project.name')
+                    ->sortable()
+                    ->searchable(isIndividual: true)
+                    ->size(Tables\Columns\TextColumn\TextColumnSize::ExtraSmall),
 //                Tables\Columns\TextColumn::make('website.baseDomain')->sortable()->searchable(isIndividual: true),
-                Tables\Columns\TextColumn::make('pageUrl')->searchable(isIndividual: true),
-                Tables\Columns\TextColumn::make('description')->searchable(isIndividual: true),
+                Tables\Columns\TextColumn::make('pageUrl')
+                    ->searchable(isIndividual: true)
+                    ->size(Tables\Columns\TextColumn\TextColumnSize::ExtraSmall),
+                Tables\Columns\TextColumn::make('description')
+                    ->searchable(isIndividual: true)
+                    ->size(Tables\Columns\TextColumn\TextColumnSize::ExtraSmall)
+                    ->copyable()
+                    ->copyMessage('Copied to clipboard')
+                    ->copyMessageDuration(1500),
 //                Tables\Columns\TextColumn::make('html'),
             ])
             ->filters([
