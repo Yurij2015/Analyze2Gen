@@ -9,7 +9,7 @@ use Illuminate\Console\Command;
 class LoadSitesData extends Command
 {
     protected $signature = 'app:load-sites-data';
-    protected $description = 'Load and parse website data';
+    protected $description = 'Load and parse basic website data';
 
     public function __construct(private readonly WebsiteDataService $websiteDataService)
     {
@@ -22,6 +22,6 @@ class LoadSitesData extends Command
      */
     public function handle(): void
     {
-        $this->websiteDataService->loadData($this, 1);
+        $this->websiteDataService->loadData($this, 2);
     }
 }

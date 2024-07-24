@@ -21,9 +21,9 @@ class WebsiteDataService
     /**
      * @throws GuzzleException
      */
-    public function loadData(Command $command, $projectId)
+    public function loadData(Command $command, $projectId): void
     {
-        $websites = $this->websiteList::whereProjectId($projectId)->first()?->pluck('websites')->toArray();
+        $websites = $this->websiteList::whereProjectId($projectId)->pluck('websites')->toArray();
         $websites = reset($websites);
 
         foreach ($websites as $website) {
