@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * 
+ *
  *
  * @property int $id
  * @property string $name
@@ -48,5 +48,10 @@ class Project extends Model
     public function websiteLists(): HasMany
     {
         return $this->hasMany(WebsiteList::class);
+    }
+
+    public function websites(): HasMany
+    {
+        return $this->hasMany(Website::class);
     }
 }
