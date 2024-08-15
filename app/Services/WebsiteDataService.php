@@ -61,45 +61,25 @@ class WebsiteDataService
         $pageHtml = $page->html;
         $page = new Crawler($pageHtml);
 
-        $this->printElements($page);
+        $pageTitle = $page->filter('title');
+        $pageTitleText = $pageTitle->text();
 
-//        $elements = $crawler->filter("*");
-//
-//        foreach ($elements as $element) {
-//            echo $element->nodeName . "\n";
-//        }
-
-//        $crawler = $crawler->filterXPath('descendant-or-self::body/p');
-
-//        $body = $crawler->filter('body')->text();
-//        $bodyp = $crawler->filter('body > div')->text();
-//        $title = $crawler->filter('title')->text();
-//
-//        $children = $crawler->filter('body')->children();
-//
-//        foreach ($children as $child){
-//
-//            print_r($child->nodeName . "\n");
-//        }
-
-//        dd($children);
-//
-//        foreach ($crawler as $domElement) {
-//            dd($domElement->nodeName);
-//            var_dump($domElement->nodeName);
-//        }
-
+        print_r($this->prepareAndSaveClearedWebPageData($page, null, $pageId, $pageTitleText));
     }
 
-    private function printElements(Crawler $page, int $level = 0, ?int $contentLength = null): void
+    private function prepareAndSaveClearedWebPageData(Crawler $page, ?int $level = 0, ?int $pageId = null, ?string $pageTitleText = null): array
     {
-
-//        $allP = $page->filter('p')->each(function (Crawler $node) {
-//            return ['node' => $node, 'node_text' => $node->text()];
-//        });
-//        print_r($allP);
+        $result = [];
+        $nodeCounters = [];
 
         foreach ($page as $element) {
+            $nodeName = $element->nodeName;
+            if (!isset($nodeCounters[$nodeName])) {
+                $nodeCounters[$nodeName] = 0;
+            }
+            $nodeCounters[$nodeName]++;
+            $nodeCount = $nodeCounters[$nodeName];
+
             $contentLength = strlen($element->textContent);
             if ($contentLength < 50 ||
                 in_array($element->nodeName, ['head', 'script', 'link', 'footer', 'header', 'nav', 'comment', 'form', 'blockquote']) ||
@@ -108,42 +88,47 @@ class WebsiteDataService
                 continue;
             }
 
-            echo str_repeat('.', $level) . $element->nodeName . " ($contentLength)\n";
+            $elementData = [];
 
             if (in_array($element->nodeName, ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])) {
-                echo str_repeat('  ', $level) . "Title: " . $element->textContent . "\n";
-            }
-            if (in_array($element->nodeName, ['p', 'a', 'span', 'li', 'ul'])) {
-                echo str_repeat('  ', $level) . "Content: " . $element->textContent . "\n";
+                $elementData['pageId'] = $pageId;
+                $elementData['pageTitle'] = $pageTitleText;
+                $elementData['level'] = $level;
+                $elementData['nodeName'] = $element->nodeName;
+                $elementData['contentLength'] = $contentLength;
+                $elementData['title'] = $element->textContent;
+                $elementData['nodeCount'] = $nodeCount;
             }
 
-            $this->printElements(new Crawler($element->childNodes), $level + 1, $contentLength);
-        }
-    }
+            if (in_array($element->nodeName, ['p', 'a', 'span', 'li', 'ul', 'strong', 'ol', 'em', 'b', 'i', 'u'])) {
+                $childNodeNames = [];
+                foreach ($element->childNodes as $childNode) {
+                    $childNodeNames = [$childNode->nodeName => $childNode->textContent];
+                }
+                $elementData['pageId'] = $pageId;
+                $elementData['pageTitle'] = $pageTitleText;
+                $elementData['level'] = $level;
+                $elementData['nodeName'] = $element->nodeName;
+                $elementData['contentLength'] = $contentLength;
+                $elementData['baseUrl'] = $element->baseURI;
+                $elementData['childNodes'] = $childNodeNames;
+                $elementData['parentNode']  = $element->parentNode->nodeName;
+                $elementData['content'] = trim(preg_replace('/\s+/', ' ', str_replace(["\n"], ' ', $element->textContent)));
+                $elementData['nodeCount'] = $nodeCount;
+            }
 
-    private function printElements1(Crawler $crawler, int $level = 0): void
-    {
-        foreach ($crawler as $element) {
-            if ($element->nodeName === 'div') {
-                $contentLength = strlen($element->textContent);
-                if ($contentLength < 100) {
+            $result[] = $elementData;
+
+            $childResult = $this->printElements(new Crawler($element->childNodes), $level + 1, $pageId, $pageTitleText);
+
+            foreach ($childResult as $childElement) {
+                if (!count($childElement)) {
                     continue;
                 }
-                $hElements = ($element->getElementsByTagName('h1')->length > 0 ||
-                        $element->getElementsByTagName('h2')->length > 0 ||
-                        $element->getElementsByTagName('h3')->length > 0 ||
-                        $element->getElementsByTagName('h4')->length > 0 ||
-                        $element->getElementsByTagName('h5')->length > 0 ||
-                        $element->getElementsByTagName('h6')->length > 0) && $contentLength > 100;
-
-                if ($hElements) {
-                    echo str_repeat('  ', $level) . $element->nodeName . " ($contentLength)\n";
-                    echo str_repeat('  ', $level) . "Content: " . $element->textContent . "\n";
-                }
+                $result[] = $childElement;
             }
-
-            $this->printElements(new Crawler($element->childNodes), $level + 1);
         }
+        return $result;
     }
 
     /**
