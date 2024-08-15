@@ -38,7 +38,7 @@ class WebPageResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('id'),
+                Tables\Columns\TextColumn::make('id')->copyable(),
                 Tables\Columns\TextColumn::make('title')
                     ->searchable(isIndividual: true)
                     ->size(Tables\Columns\TextColumn\TextColumnSize::ExtraSmall)
