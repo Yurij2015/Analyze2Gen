@@ -38,9 +38,11 @@ class WebPageResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('id'),
                 Tables\Columns\TextColumn::make('title')
                     ->searchable(isIndividual: true)
                     ->size(Tables\Columns\TextColumn\TextColumnSize::ExtraSmall)
+                    ->wrap()
                     ->copyable()
                     ->copyMessage('Copied to clipboard')
                     ->copyMessageDuration(1500),
@@ -51,15 +53,19 @@ class WebPageResource extends Resource
 //                Tables\Columns\TextColumn::make('website.baseDomain')->sortable()->searchable(isIndividual: true),
                 Tables\Columns\TextColumn::make('pageUrl')
                     ->searchable(isIndividual: true)
-                    ->size(Tables\Columns\TextColumn\TextColumnSize::ExtraSmall),
+                    ->wrap()
+                    ->size(Tables\Columns\TextColumn\TextColumnSize::ExtraSmall)
+                    ->url(fn($record) => $record->pageUrl, true),
                 Tables\Columns\TextColumn::make('description')
                     ->searchable(isIndividual: true)
                     ->size(Tables\Columns\TextColumn\TextColumnSize::ExtraSmall)
+                    ->wrap()
                     ->copyable()
                     ->copyMessage('Copied to clipboard')
                     ->copyMessageDuration(1500),
 //                Tables\Columns\TextColumn::make('html'),
             ])
+            ->searchOnBlur()
             ->filters([
                 //
             ])
