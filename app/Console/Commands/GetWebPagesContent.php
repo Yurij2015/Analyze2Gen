@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Services\WebsiteDataService;
+use App\Services\WebsitePagesService;
 use Illuminate\Console\Command;
 
 class GetWebPagesContent extends Command
@@ -24,9 +24,9 @@ class GetWebPagesContent extends Command
     /**
      * Execute the console command.
      */
-    public function handle(WebsiteDataService $websiteDataService): void
+    public function handle(WebsitePagesService $websitePagesService): void
     {
         $pageId = $this->argument('pageId');
-        $websiteDataService->getPagesContent($pageId);
+        $websitePagesService->getPagesContent($this, $pageId);
     }
 }

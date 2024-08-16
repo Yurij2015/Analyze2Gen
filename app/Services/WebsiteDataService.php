@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\WebPage;
+use App\Models\WebPageCleared;
 use App\Models\Website;
 use App\Models\WebsiteList;
 use GuzzleHttp\Client;
@@ -15,7 +16,7 @@ class WebsiteDataService
 {
     protected Client $client;
 
-    public function __construct(private readonly WebsiteList $websiteList, private readonly WebPage $webPage)
+    public function __construct(private readonly WebsiteList $websiteList)
     {
         $this->client = new Client();
     }
@@ -45,90 +46,6 @@ class WebsiteDataService
 //            $client->takeScreenshot('screen.png');
 
         }
-    }
-
-    public function getPagesContent(?int $pageId)
-    {
-        if ($pageId === null) {
-            $pageId = 5893;
-        }
-        $this->getPageContent($pageId);
-    }
-
-    public function getPageContent(int $pageId)
-    {
-        $page = $this->webPage::find($pageId);
-        $pageHtml = $page->html;
-        $page = new Crawler($pageHtml);
-
-        $pageTitle = $page->filter('title');
-        $pageTitleText = $pageTitle->text();
-
-        print_r($this->prepareAndSaveClearedWebPageData($page, null, $pageId, $pageTitleText));
-    }
-
-    private function prepareAndSaveClearedWebPageData(Crawler $page, ?int $level = 0, ?int $pageId = null, ?string $pageTitleText = null): array
-    {
-        $result = [];
-        $nodeCounters = [];
-
-        foreach ($page as $element) {
-            $nodeName = $element->nodeName;
-            if (!isset($nodeCounters[$nodeName])) {
-                $nodeCounters[$nodeName] = 0;
-            }
-            $nodeCounters[$nodeName]++;
-            $nodeCount = $nodeCounters[$nodeName];
-
-            $contentLength = strlen($element->textContent);
-            if ($contentLength < 50 ||
-                in_array($element->nodeName, ['head', 'script', 'link', 'footer', 'header', 'nav', 'comment', 'form', 'blockquote']) ||
-                str_starts_with($element->nodeName, '#')
-            ) {
-                continue;
-            }
-
-            $elementData = [];
-
-            if (in_array($element->nodeName, ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])) {
-                $elementData['pageId'] = $pageId;
-                $elementData['pageTitle'] = $pageTitleText;
-                $elementData['level'] = $level;
-                $elementData['nodeName'] = $element->nodeName;
-                $elementData['contentLength'] = $contentLength;
-                $elementData['title'] = $element->textContent;
-                $elementData['nodeCount'] = $nodeCount;
-            }
-
-            if (in_array($element->nodeName, ['p', 'a', 'span', 'li', 'ul', 'strong', 'ol', 'em', 'b', 'i', 'u'])) {
-                $childNodeNames = [];
-                foreach ($element->childNodes as $childNode) {
-                    $childNodeNames = [$childNode->nodeName => $childNode->textContent];
-                }
-                $elementData['pageId'] = $pageId;
-                $elementData['pageTitle'] = $pageTitleText;
-                $elementData['level'] = $level;
-                $elementData['nodeName'] = $element->nodeName;
-                $elementData['contentLength'] = $contentLength;
-                $elementData['baseUrl'] = $element->baseURI;
-                $elementData['childNodes'] = $childNodeNames;
-                $elementData['parentNode']  = $element->parentNode->nodeName;
-                $elementData['content'] = trim(preg_replace('/\s+/', ' ', str_replace(["\n"], ' ', $element->textContent)));
-                $elementData['nodeCount'] = $nodeCount;
-            }
-
-            $result[] = $elementData;
-
-            $childResult = $this->printElements(new Crawler($element->childNodes), $level + 1, $pageId, $pageTitleText);
-
-            foreach ($childResult as $childElement) {
-                if (!count($childElement)) {
-                    continue;
-                }
-                $result[] = $childElement;
-            }
-        }
-        return $result;
     }
 
     /**

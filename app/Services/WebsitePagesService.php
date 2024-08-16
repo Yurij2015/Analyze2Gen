@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\WebPage;
+use App\Models\WebPageCleared;
 use App\Models\Website;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
@@ -16,7 +17,7 @@ class WebsitePagesService
     protected int $minTimeout = 1;
     protected int $maxTimeout = 3;
 
-    public function __construct(private readonly Website $website)
+    public function __construct(private readonly Website $website, private readonly WebPage $webPage)
     {
         $this->client = new Client();
     }
@@ -45,6 +46,132 @@ class WebsitePagesService
             sleep($randomTimeout);
         }
     }
+
+    public function getPagesContent(Command $command, ?int $pageId)
+    {
+        if ($pageId !== null) {
+            $this->getPageContent($pageId, $command);
+        } else {
+            $webPagesIds = $this->webPage->pluck('id');
+            foreach ($webPagesIds as $webPageId) {
+                $this->getPageContent($webPageId, $command);
+            }
+        }
+    }
+
+    public function getPageContent(int $pageId, Command $command)
+    {
+        $page = $this->webPage::find($pageId);
+        $pageHtml = $page->html;
+        $page = new Crawler($pageHtml);
+
+        $pageTitleText = $page->filter('title')->count() ? $page->filter('title')->text() : 'No title available';
+
+        try {
+            $this->prepareAndSaveClearedWebPageData($page, $command, null, $pageId, $pageTitleText);
+        } catch (\Exception $e) {
+            $command->error("Error processing page $pageId: " . $e->getMessage());
+        }
+    }
+
+    private function prepareAndSaveClearedWebPageData(
+        Crawler $page,
+        Command $command,
+        ?int    $level = 0,
+        ?int    $pageId = null,
+        ?string $pageTitleText = null
+    ): void
+    {
+        $result = [];
+        $nodeCounters = [];
+
+        foreach ($page as $element) {
+
+            if ($element->childNodes->length === 0) {
+                continue;
+            }
+
+            $nodeName = $element->nodeName;
+            if (!isset($nodeCounters[$nodeName])) {
+                $nodeCounters[$nodeName] = 0;
+            }
+            $nodeCounters[$nodeName]++;
+            $nodeCount = $nodeCounters[$nodeName];
+
+            $contentLength = strlen($element->textContent);
+            if ($contentLength < 50 ||
+                in_array($element->nodeName, ['head', 'script', 'link', 'footer', 'header', 'nav', 'comment', 'form', 'blockquote']) ||
+                str_starts_with($element->nodeName, '#')
+            ) {
+                continue;
+            }
+
+            $elementData = [];
+
+            if (in_array($element->nodeName, ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])) {
+                $elementData['web_page_id'] = $pageId;
+                $elementData['page_title'] = $pageTitleText;
+                $elementData['level'] = $level;
+                $elementData['node_name'] = $element->nodeName;
+                $elementData['content_length'] = $contentLength;
+                $elementData['parent_node'] = $element->parentNode->nodeName;
+                $elementData['content_title'] = $element->textContent;
+                $elementData['node_count'] = $nodeCount;
+
+                WebPageCleared::updateOrCreate(
+                    [
+                        'web_page_id' => $pageId,
+                        'level' => $level,
+                        'node_name' => $element->nodeName,
+                        'content_length' => $contentLength,
+                        'parent_node' => $element->parentNode->nodeName,
+                        'node_count' => $nodeCount,
+                    ],
+                    $elementData
+                );
+                $command->info("Element $element->nodeName processed");
+            }
+
+            if (in_array($element->nodeName, ['p', 'a', 'span', 'li', 'ul', 'strong', 'ol', 'em', 'b', 'i', 'u'])) {
+                $childNodeNames = [];
+                foreach ($element->childNodes as $childNode) {
+                    $childNodeNames = [$childNode->nodeName => $childNode->textContent];
+                }
+                $elementData['web_page_id'] = $pageId;
+                $elementData['page_title'] = $pageTitleText;
+                $elementData['level'] = $level;
+                $elementData['node_name'] = $element->nodeName;
+                $elementData['content_length'] = $contentLength;
+                $elementData['base_url'] = $element->baseURI;
+                $elementData['child_nodes'] = $childNodeNames;
+                $elementData['parent_node'] = $element->parentNode->nodeName;
+                $elementData['content'] = trim(preg_replace('/\s+/', ' ', str_replace(["\n"], ' ', $element->textContent)));
+                $elementData['node_count'] = $nodeCount;
+
+                WebPageCleared::updateOrCreate(
+                    [
+                        'web_page_id' => $pageId,
+                        'level' => $level,
+                        'node_name' => $element->nodeName,
+                        'content_length' => $contentLength,
+                        'parent_node' => $element->parentNode->nodeName,
+                        'node_count' => $nodeCount,
+                    ],
+                    $elementData
+                );
+                $command->info("Element $element->nodeName processed");
+            }
+
+            $this->prepareAndSaveClearedWebPageData(
+                new Crawler($element->childNodes),
+                $command,
+                $level + 1,
+                $pageId,
+                $pageTitleText
+            );
+        }
+    }
+
 
     /**
      * @throws GuzzleException
